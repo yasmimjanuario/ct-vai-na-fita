@@ -99,7 +99,9 @@ export default function Home() {
         throw new Error(result.error || "Não foi possível concluir o agendamento.");
       }
 
-      setSubmitMessage("Aula agendada! Seus dados foram enviados para o CT.");
+      setSubmitMessage(
+        "Aula agendada! Seus dados foram enviados para o CT. Te esperamos na areia — venha viver essa experiência com a gente! 💚",
+      );
       setName("");
       setPhone("");
       setAge("");
