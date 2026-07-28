@@ -36,6 +36,11 @@ button {
   font: inherit;
 }
 
+input,
+select {
+  font: inherit;
+}
+
 .shell {
   width: min(1160px, calc(100% - 40px));
   margin-inline: auto;
@@ -331,6 +336,49 @@ button {
   padding-block: 95px 110px;
 }
 
+.student-fields label {
+  display: grid;
+  gap: 8px;
+}
+
+.student-fields label > span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.student-fields input,
+.student-fields select {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 14px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  outline: none;
+  background: var(--white);
+}
+
+.student-fields input:focus,
+.student-fields select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(8, 119, 122, 0.12);
+}
+
+.student-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 25px;
+}
+
+@media (max-width: 620px) {
+  .student-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 .section-heading {
   display: flex;
   gap: 22px;
@@ -413,14 +461,6 @@ button {
   font-weight: 900;
 }
 
-.date-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin: 24px 0;
-}
-
-.date-tab,
 .time {
   border: 1px solid var(--line);
   color: var(--ink);
@@ -428,34 +468,117 @@ button {
   cursor: pointer;
 }
 
-.date-tab {
-  min-height: 74px;
-  border-radius: 10px;
-}
-
-.date-tab span,
-.date-tab strong {
-  display: block;
-}
-
-.date-tab span {
-  margin-bottom: 3px;
-  color: #6d8586;
-  font-size: 11px;
-}
-
-.date-tab strong {
-  font-size: 13px;
-}
-
-.date-tab.active,
 .time.active {
   color: white;
   border-color: var(--brand);
   background: var(--brand);
 }
 
-.date-tab.active span {
+.agenda-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 25px 0 14px;
+}
+
+.agenda-heading > div span,
+.agenda-heading > div strong {
+  display: block;
+}
+
+.agenda-heading > div span {
+  color: #6d8586;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.agenda-heading > div strong {
+  margin-top: 4px;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.capacity-note {
+  padding: 7px 10px;
+  color: var(--brand);
+  border-radius: 999px;
+  background: rgba(22, 201, 173, 0.1);
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.agenda-calendar {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 25px;
+}
+
+.agenda-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(58px, 1fr));
+  gap: 8px;
+}
+
+.agenda-arrow,
+.agenda-day {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: white;
+  cursor: pointer;
+}
+
+.agenda-arrow {
+  border-radius: 12px;
+  font-size: 28px;
+}
+
+.agenda-arrow:disabled {
+  cursor: default;
+  opacity: 0.25;
+}
+
+.agenda-day {
+  min-height: 84px;
+  padding: 9px 5px;
+  border-radius: 12px;
+}
+
+.agenda-day span,
+.agenda-day strong,
+.agenda-day small {
+  display: block;
+  text-transform: capitalize;
+}
+
+.agenda-day span {
+  color: #6d8586;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.agenda-day strong {
+  margin: 3px 0 1px;
+  font-size: 24px;
+}
+
+.agenda-day small {
+  color: #789091;
+  font-size: 10px;
+}
+
+.agenda-day.active {
+  color: white;
+  border-color: var(--brand);
+  background: var(--brand);
+  box-shadow: 0 9px 20px rgba(8, 119, 122, 0.2);
+}
+
+.agenda-day.active span,
+.agenda-day.active small {
   color: var(--aqua-soft);
 }
 
@@ -483,6 +606,49 @@ button {
   margin-top: 26px;
   color: var(--white);
   background: var(--ink);
+}
+
+.student-form {
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.selection-summary {
+  padding: 14px 16px;
+  border-left: 4px solid var(--aqua);
+  border-radius: 0 10px 10px 0;
+  background: #f2fbf8;
+}
+
+.selection-summary span,
+.selection-summary strong {
+  display: block;
+}
+
+.selection-summary span {
+  color: #6d8586;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.selection-summary strong {
+  margin-top: 4px;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.button-confirm:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.booking-feedback {
+  margin-top: 14px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--deep);
 }
 
 .info-card {
@@ -759,12 +925,32 @@ button {
     padding: 18px;
   }
 
-  .date-tabs {
-    gap: 6px;
+  .agenda-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  .date-tab {
-    min-height: 66px;
+  .agenda-calendar {
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+    gap: 5px;
+  }
+
+  .agenda-days {
+    grid-template-columns: repeat(7, 58px);
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    scroll-snap-type: x proximity;
+  }
+
+  .agenda-day {
+    min-height: 75px;
+    scroll-snap-align: start;
+  }
+
+  .agenda-day strong {
+    font-size: 21px;
   }
 
   .time-grid {
