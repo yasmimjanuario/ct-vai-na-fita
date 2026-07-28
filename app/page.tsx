@@ -20,6 +20,25 @@ function formatDate(date: string) {
   }).format(new Date(`${date}T12:00:00Z`));
 }
 
+function addDays(date: Date, amount: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
+}
+
+function dateParts(date: Date) {
+  return {
+    value: toInputDate(date),
+    weekday: new Intl.DateTimeFormat("pt-BR", { weekday: "short" })
+      .format(date)
+      .replace(".", ""),
+    day: new Intl.DateTimeFormat("pt-BR", { day: "2-digit" }).format(date),
+    month: new Intl.DateTimeFormat("pt-BR", { month: "short" })
+      .format(date)
+      .replace(".", ""),
+  };
+}
+
 const whatsappUrl =
   "https://wa.me/5521971194446?text=Oi%2C%20vim%20pelo%20site%20do%20CT%20Vai%20na%20Fita%20e%20quero%20saber%20mais%20sobre%20a%20aula%20experimental.";
 
@@ -29,19 +48,28 @@ const mapsUrl =
 export default function Home() {
   const today = useMemo(() => new Date(), []);
   const minDate = useMemo(() => toInputDate(today), [today]);
-  const maxDate = useMemo(() => {
-    const date = new Date(today);
-    date.setDate(date.getDate() + 90);
-    return toInputDate(date);
-  }, [today]);
   const [selectedDate, setSelectedDate] = useState(minDate);
   const [selectedTime, setSelectedTime] = useState("18:00");
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [showStudentFields, setShowStudentFields] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
   const [practiced, setPracticed] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
+  const agendaDates = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, index) =>
+        dateParts(addDays(today, weekOffset + index)),
+      ),
+    [today, weekOffset],
+  );
+
+  function openStudentForm() {
+    setSubmitMessage("");
+    setShowStudentFields(true);
+  }
 
   async function saveBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,6 +104,7 @@ export default function Home() {
       setPhone("");
       setAge("");
       setPracticed("");
+      setShowStudentFields(false);
     } catch (error) {
       setSubmitMessage(
         error instanceof Error
@@ -166,18 +195,52 @@ export default function Home() {
             </div>
 
             <form onSubmit={saveBooking}>
-              <label className="calendar-field">
-                <span>Escolha a data</span>
-                <input
-                  type="date"
-                  min={minDate}
-                  max={maxDate}
-                  value={selectedDate}
-                  onChange={(event) => setSelectedDate(event.target.value)}
-                  required
-                />
-                <small>{formatDate(selectedDate)} • até 4 vagas por horário</small>
-              </label>
+              <div className="agenda-heading">
+                <div>
+                  <span>Escolha a data</span>
+                  <strong>{formatDate(selectedDate)}</strong>
+                </div>
+                <span className="capacity-note">4 vagas por horário</span>
+              </div>
+
+              <div className="agenda-calendar" aria-label="Agenda de datas disponíveis">
+                <button
+                  className="agenda-arrow"
+                  type="button"
+                  aria-label="Ver semana anterior"
+                  disabled={weekOffset === 0}
+                  onClick={() => setWeekOffset(Math.max(0, weekOffset - 7))}
+                >
+                  ‹
+                </button>
+                <div className="agenda-days">
+                  {agendaDates.map((date, index) => (
+                    <button
+                      className={selectedDate === date.value ? "agenda-day active" : "agenda-day"}
+                      key={date.value}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDate(date.value);
+                        setShowStudentFields(false);
+                        setSubmitMessage("");
+                      }}
+                    >
+                      <span>{index === 0 && weekOffset === 0 ? "Hoje" : date.weekday}</span>
+                      <strong>{date.day}</strong>
+                      <small>{date.month}</small>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="agenda-arrow"
+                  type="button"
+                  aria-label="Ver próxima semana"
+                  disabled={weekOffset >= 84}
+                  onClick={() => setWeekOffset(Math.min(84, weekOffset + 7))}
+                >
+                  ›
+                </button>
+              </div>
 
               <p className="time-label">Horários disponíveis</p>
               <div className="time-grid">
@@ -185,7 +248,11 @@ export default function Home() {
                   <button
                     className={selectedTime === time ? "time active" : "time"}
                     key={time}
-                    onClick={() => setSelectedTime(time)}
+                    onClick={() => {
+                      setSelectedTime(time);
+                      setShowStudentFields(false);
+                      setSubmitMessage("");
+                    }}
                     type="button"
                   >
                     {time}
@@ -193,33 +260,45 @@ export default function Home() {
                 ))}
               </div>
 
-              <div className="student-fields">
-                <label>
-                  <span>Nome</span>
-                  <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Seu nome completo" required />
-                </label>
-                <label>
-                  <span>Telefone</span>
-                  <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(21) 99999-9999" inputMode="tel" required />
-                </label>
-                <label>
-                  <span>Idade</span>
-                  <input value={age} onChange={(event) => setAge(event.target.value)} placeholder="Ex.: 28" inputMode="numeric" min="5" max="100" type="number" required />
-                </label>
-                <label>
-                  <span>Já praticou futevôlei?</span>
-                  <select value={practiced} onChange={(event) => setPracticed(event.target.value)} required>
-                    <option value="">Selecione</option>
-                    <option value="Sim">Sim</option>
-                    <option value="Não">Não</option>
-                  </select>
-                </label>
-              </div>
-
-              <button className="button button-confirm" type="submit" disabled={submitting}>
-                {submitting ? "Salvando..." : "Agendar aula"}
-                <span aria-hidden="true">→</span>
-              </button>
+              {!showStudentFields ? (
+                <button className="button button-confirm" type="button" onClick={openStudentForm}>
+                  Agendar aula
+                  <span aria-hidden="true">→</span>
+                </button>
+              ) : (
+                <div className="student-form">
+                  <div className="selection-summary">
+                    <span>Sua aula</span>
+                    <strong>{formatDate(selectedDate)} às {selectedTime}</strong>
+                  </div>
+                  <div className="student-fields">
+                    <label>
+                      <span>Nome</span>
+                      <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Seu nome completo" required autoFocus />
+                    </label>
+                    <label>
+                      <span>Telefone</span>
+                      <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(21) 99999-9999" inputMode="tel" required />
+                    </label>
+                    <label>
+                      <span>Idade</span>
+                      <input value={age} onChange={(event) => setAge(event.target.value)} placeholder="Ex.: 28" inputMode="numeric" min="5" max="100" type="number" required />
+                    </label>
+                    <label>
+                      <span>Já praticou futevôlei?</span>
+                      <select value={practiced} onChange={(event) => setPracticed(event.target.value)} required>
+                        <option value="">Selecione</option>
+                        <option value="Sim">Sim</option>
+                        <option value="Não">Não</option>
+                      </select>
+                    </label>
+                  </div>
+                  <button className="button button-confirm" type="submit" disabled={submitting}>
+                    {submitting ? "Salvando..." : "Confirmar agendamento"}
+                    <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+              )}
               {submitMessage && (
                 <p className="booking-feedback" role="status">{submitMessage}</p>
               )}
