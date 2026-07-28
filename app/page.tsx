@@ -1,13 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import Image from "next/image";
 
-const schedule = [
-  { day: "Hoje", date: "28 JUL", times: ["17:00", "18:00", "19:00", "20:00"] },
-  { day: "Quarta", date: "29 JUL", times: ["06:00", "07:00", "08:00", "17:00", "18:00", "19:00", "20:00"] },
-  { day: "Quinta", date: "30 JUL", times: ["06:00", "07:00", "08:00", "17:00", "18:00", "19:00", "20:00"] },
-];
+const times = ["06:00", "07:00", "08:00", "17:00", "18:00", "19:00", "20:00"];
+
+function toInputDate(date: Date) {
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 10);
+}
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
 
 const whatsappUrl =
   "https://wa.me/5521971194446?text=Oi%2C%20vim%20pelo%20site%20do%20CT%20Vai%20na%20Fita%20e%20quero%20saber%20mais%20sobre%20a%20aula%20experimental.";
@@ -16,13 +27,65 @@ const mapsUrl =
   "https://www.google.com/maps/search/?api=1&query=Mirante+de+Icara%C3%AD%2C+Estrada+Leopoldo+Fr%C3%B3es%2C+Niter%C3%B3i";
 
 export default function Home() {
-  const [selectedDay, setSelectedDay] = useState(0);
+  const today = useMemo(() => new Date(), []);
+  const minDate = useMemo(() => toInputDate(today), [today]);
+  const maxDate = useMemo(() => {
+    const date = new Date(today);
+    date.setDate(date.getDate() + 90);
+    return toInputDate(date);
+  }, [today]);
+  const [selectedDate, setSelectedDate] = useState(minDate);
   const [selectedTime, setSelectedTime] = useState("18:00");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [age, setAge] = useState("");
+  const [practiced, setPracticed] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
 
-  const selected = useMemo(
-    () => schedule[selectedDay],
-    [selectedDay],
-  );
+  async function saveBooking(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setSubmitMessage("");
+    const params = new URLSearchParams(window.location.search);
+    const partner =
+      params.get("partner") || params.get("utm_source") || "acesso direto";
+
+    try {
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          phone,
+          age: Number(age),
+          practiced,
+          date: selectedDate,
+          time: selectedTime,
+          partner,
+        }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Não foi possível concluir o agendamento.");
+      }
+
+      setSubmitMessage("Aula agendada! Seus dados foram enviados para o CT.");
+      setName("");
+      setPhone("");
+      setAge("");
+      setPracticed("");
+    } catch (error) {
+      setSubmitMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível concluir o agendamento.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <main>
@@ -102,41 +165,65 @@ export default function Home() {
               <span className="free-tag">GRÁTIS</span>
             </div>
 
-            <div className="date-tabs" role="tablist" aria-label="Escolha uma data">
-              {schedule.map((item, index) => (
-                <button
-                  className={selectedDay === index ? "date-tab active" : "date-tab"}
-                  key={item.date}
-                  onClick={() => {
-                    setSelectedDay(index);
-                    setSelectedTime(item.times[0]);
-                  }}
-                  role="tab"
-                  aria-selected={selectedDay === index}
-                >
-                  <span>{item.day}</span>
-                  <strong>{item.date}</strong>
-                </button>
-              ))}
-            </div>
+            <form onSubmit={saveBooking}>
+              <label className="calendar-field">
+                <span>Escolha a data</span>
+                <input
+                  type="date"
+                  min={minDate}
+                  max={maxDate}
+                  value={selectedDate}
+                  onChange={(event) => setSelectedDate(event.target.value)}
+                  required
+                />
+                <small>{formatDate(selectedDate)} • até 4 vagas por horário</small>
+              </label>
 
-            <p className="time-label">Horários disponíveis</p>
-            <div className="time-grid">
-              {selected.times.map((time) => (
-                <button
-                  className={selectedTime === time ? "time active" : "time"}
-                  key={time}
-                  onClick={() => setSelectedTime(time)}
-                >
-                  {time}
-                </button>
-              ))}
-            </div>
+              <p className="time-label">Horários disponíveis</p>
+              <div className="time-grid">
+                {times.map((time) => (
+                  <button
+                    className={selectedTime === time ? "time active" : "time"}
+                    key={time}
+                    onClick={() => setSelectedTime(time)}
+                    type="button"
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
 
-            <button className="button button-confirm" type="button">
-              Continuar com {selected.day.toLowerCase()}, {selectedTime}
-              <span aria-hidden="true">→</span>
-            </button>
+              <div className="student-fields">
+                <label>
+                  <span>Nome</span>
+                  <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Seu nome completo" required />
+                </label>
+                <label>
+                  <span>Telefone</span>
+                  <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(21) 99999-9999" inputMode="tel" required />
+                </label>
+                <label>
+                  <span>Idade</span>
+                  <input value={age} onChange={(event) => setAge(event.target.value)} placeholder="Ex.: 28" inputMode="numeric" min="5" max="100" type="number" required />
+                </label>
+                <label>
+                  <span>Já praticou futevôlei?</span>
+                  <select value={practiced} onChange={(event) => setPracticed(event.target.value)} required>
+                    <option value="">Selecione</option>
+                    <option value="Sim">Sim</option>
+                    <option value="Não">Não</option>
+                  </select>
+                </label>
+              </div>
+
+              <button className="button button-confirm" type="submit" disabled={submitting}>
+                {submitting ? "Salvando..." : "Agendar aula"}
+                <span aria-hidden="true">→</span>
+              </button>
+              {submitMessage && (
+                <p className="booking-feedback" role="status">{submitMessage}</p>
+              )}
+            </form>
           </div>
 
           <aside className="info-card">
