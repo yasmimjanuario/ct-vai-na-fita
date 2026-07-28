@@ -86,17 +86,38 @@ select {
   text-decoration: none;
 }
 
+.brand-ball,
 .ball-mark {
   display: grid;
   place-items: center;
   border-radius: 50%;
+  font-weight: 900;
+  letter-spacing: -0.08em;
 }
 
-.brand-logo {
-  width: 190px;
-  height: auto;
+.brand-ball {
+  width: 48px;
+  height: 48px;
+  color: var(--deep);
+  background: var(--aqua-soft);
+  border: 3px solid white;
+}
+
+.brand strong,
+.brand small {
   display: block;
-  object-fit: contain;
+}
+
+.brand strong {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+}
+
+.brand small {
+  margin-top: 3px;
+  opacity: 0.66;
+  font-size: 9px;
+  letter-spacing: 0.2em;
 }
 
 .nav-link,
@@ -241,23 +262,17 @@ select {
 }
 
 .ball-mark {
-  width: 158px;
-  height: 158px;
+  width: 150px;
+  height: 150px;
   position: absolute;
   top: 122px;
   right: 115px;
-  overflow: hidden;
-  background: #07585a;
-  border: 7px solid rgba(255, 255, 255, 0.7);
+  color: var(--deep);
+  font-size: 45px;
+  background: var(--sand);
+  border: 8px solid rgba(255, 255, 255, 0.55);
   box-shadow: 0 24px 50px rgba(0, 0, 0, 0.24);
   transform: rotate(9deg);
-}
-
-.ball-mark img {
-  width: 112px;
-  height: auto;
-  object-fit: contain;
-  transform: rotate(-9deg);
 }
 
 .floating-card {
@@ -805,10 +820,6 @@ select {
     right: 100px;
   }
 
-  .ball-mark img {
-    width: 86px;
-  }
-
   .booking-layout,
   .location-layout {
     grid-template-columns: 1fr;
@@ -832,8 +843,9 @@ select {
     display: none;
   }
 
-  .brand-logo {
-    width: 162px;
+  .brand-ball {
+    width: 42px;
+    height: 42px;
   }
 
   .hero-content {
@@ -888,10 +900,7 @@ select {
     height: 106px;
     top: 92px;
     right: 89px;
-  }
-
-  .ball-mark img {
-    width: 76px;
+    font-size: 32px;
   }
 
   .floating-card {
