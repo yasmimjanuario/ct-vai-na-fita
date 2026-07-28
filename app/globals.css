@@ -978,4 +978,7 @@ select {
     display: none;
   }
 
-  .whatsapp-float {\n    padding: 8px;\n  }\n}\n
+  .whatsapp-float {
+    padding: 8px;
+  }
+}
