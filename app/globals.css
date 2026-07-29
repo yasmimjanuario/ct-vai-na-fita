@@ -761,7 +761,7 @@ select {
 
 .founders-photo img {
   object-fit: cover;
-  object-position: center top;
+  object-position: 50% 32%;
 }
 
 .founders-photo span {
