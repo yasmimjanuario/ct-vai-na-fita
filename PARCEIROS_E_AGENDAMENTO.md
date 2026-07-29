@@ -5,7 +5,7 @@
 Cada estabelecimento parceiro deve ter uma URL própria. O valor de `partner` e `utm_source` identifica de onde veio a pessoa:
 
 ```text
-https://ct-vai-na-fita-rho.vercel.app/?partner=academia-exemplo&utm_source=academia-exemplo&utm_medium=qrcode&utm_campaign=aula_experimental
+https://ct-vainafita.vercel.app/?partner=academia-exemplo&utm_source=academia-exemplo&utm_medium=qrcode&utm_campaign=aula_experimental
 ```
 
 Para cada novo parceiro:
