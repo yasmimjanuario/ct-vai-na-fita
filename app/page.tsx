@@ -349,8 +349,8 @@ export default function Home() {
               <Image src="/photos/campeoes.webp" alt="Campeões no torneio do CT Vai na Fita" fill sizes="(max-width: 700px) 100vw, 30vw" />
               <figcaption>Torneios que viram memória.</figcaption>
             </figure>
-            <figure className="photo-card">
-              <Image src="/photos/comunidade.webp" alt="Alunos e parceiros do CT Vai na Fita" fill sizes="(max-width: 700px) 100vw, 30vw" />
+            <figure className="photo-card photo-card-students">
+              <Image src="/photos/turma-torneio.webp" alt="Turma de alunos do CT Vai na Fita reunida na areia" fill sizes="(max-width: 700px) 100vw, 30vw" />
               <figcaption>Uma comunidade dentro e fora da quadra.</figcaption>
             </figure>
           </div>
