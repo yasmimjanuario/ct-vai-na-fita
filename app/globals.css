@@ -716,6 +716,10 @@ select {
   object-position: center 40%;
 }
 
+.photo-card-students img {
+  object-position: 50% 56%;
+}
+
 .photo-card:hover img {
   transform: scale(1.03);
 }
