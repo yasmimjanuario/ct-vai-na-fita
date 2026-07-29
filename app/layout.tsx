@@ -21,10 +21,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: {
-      url: "/brand/logo-horizontal.png",
-      type: "image/png",
+      url: "/favicon.svg?v=2",
+      type: "image/svg+xml",
     },
-    shortcut: "/brand/logo-horizontal.png",
+    shortcut: "/favicon.svg?v=2",
     apple: "/brand/logo-horizontal.png",
   },
 };
