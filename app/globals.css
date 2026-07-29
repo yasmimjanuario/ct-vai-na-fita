@@ -1045,11 +1045,20 @@ select {
 
   .photo-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: 390px 260px 260px;
+    grid-template-rows: none;
   }
 
+  .photo-card,
   .photo-card-tall {
     grid-row: auto;
+    min-height: auto;
+    aspect-ratio: 3 / 4;
+  }
+
+  .photo-card img,
+  .photo-card-tall img,
+  .photo-card-students img {
+    object-position: center;
   }
 
   .founders-photo {
