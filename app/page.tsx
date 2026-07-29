@@ -123,13 +123,20 @@ export default function Home() {
       <section className="hero">
         <nav className="nav shell" aria-label="Navegação principal">
           <a className="brand" href="#inicio" aria-label="CT Vai na Fita">
-            <span className="brand-ball">VF</span>
-            <span>
-              <strong>CT VAI NA FITA</strong>
-              <small>FUTEVÔLEI • ICARAÍ</small>
-            </span>
+            <Image
+              className="brand-logo"
+              src="/brand/logo-horizontal-branca.png"
+              alt="CT Vai na Fita Futevôlei"
+              width={641}
+              height={236}
+              priority
+            />
           </a>
-          <a className="nav-link" href="#localizacao">Onde estamos</a>
+          <div className="nav-links">
+            <a className="nav-link" href="#nossa-areia">Nossa areia</a>
+            <a className="nav-link" href="#fundadores">Quem faz</a>
+            <a className="nav-link" href="#localizacao">Onde estamos</a>
+          </div>
         </nav>
 
         <div className="hero-content shell" id="inicio">
@@ -158,20 +165,22 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="hero-visual" aria-label="Quadra de futevôlei do CT Vai na Fita">
-            <div className="sun" />
-            <div className="net">
-              {Array.from({ length: 9 }).map((_, index) => (
-                <i key={index} />
-              ))}
-            </div>
+          <div className="hero-visual">
+            <Image
+              className="hero-photo"
+              src="/photos/turma-torneio.webp"
+              alt="Turma do CT Vai na Fita reunida na areia em Icaraí"
+              fill
+              sizes="(max-width: 850px) 100vw, 45vw"
+              priority
+            />
+            <span className="hero-photo-label">Icaraí • Niterói</span>
             <div className="floating-card">
               <span className="pulse" />
-              <p>Próxima turma</p>
-              <strong>Hoje, 18h</strong>
-              <small>Praia de Icaraí</small>
+              <p>Mais que uma aula</p>
+              <strong>Esporte, praia e comunidade</strong>
+              <small>Para quem está começando também</small>
             </div>
-            <div className="ball-mark">VF</div>
           </div>
         </div>
         <div className="wave" />
@@ -316,6 +325,62 @@ export default function Home() {
             </address>
             <a href="#localizacao">Ver localização completa</a>
           </aside>
+        </div>
+      </section>
+
+      <section className="experience-section" id="nossa-areia">
+        <div className="shell">
+          <div className="experience-heading">
+            <div>
+              <p className="kicker">A energia do Vai na Fita</p>
+              <h2>É na areia que<br />a gente se encontra.</h2>
+            </div>
+            <p>
+              Aulas, torneios e uma comunidade que recebe quem nunca jogou e
+              desafia quem quer evoluir.
+            </p>
+          </div>
+          <div className="photo-grid">
+            <figure className="photo-card photo-card-tall">
+              <Image src="/photos/jogo-na-areia.webp" alt="Atletas jogando futevôlei na Praia de Icaraí" fill sizes="(max-width: 700px) 100vw, 38vw" />
+              <figcaption>Jogo de verdade, no seu ritmo.</figcaption>
+            </figure>
+            <figure className="photo-card">
+              <Image src="/photos/campeoes.webp" alt="Campeões no torneio do CT Vai na Fita" fill sizes="(max-width: 700px) 100vw, 30vw" />
+              <figcaption>Torneios que viram memória.</figcaption>
+            </figure>
+            <figure className="photo-card">
+              <Image src="/photos/comunidade.webp" alt="Alunos e parceiros do CT Vai na Fita" fill sizes="(max-width: 700px) 100vw, 30vw" />
+              <figcaption>Uma comunidade dentro e fora da quadra.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section className="founders-section" id="fundadores">
+        <div className="shell founders-layout">
+          <div className="founders-photo">
+            <Image
+              src="/photos/fundadores.webp"
+              alt="Daniel Tinoco e José Ricardo, Zé, fundadores do CT Vai na Fita"
+              fill
+              sizes="(max-width: 800px) 100vw, 44vw"
+            />
+            <span>Na areia com você</span>
+          </div>
+          <div className="founders-copy">
+            <p className="kicker">Quem faz o CT acontecer</p>
+            <h2>Daniel Tinoco<br />e José Ricardo (Zé)</h2>
+            <p>
+              À frente do Vai na Fita, Daniel e Zé transformaram a paixão pelo
+              futevôlei em um espaço para aprender, evoluir e criar amizades.
+              Aqui, cada aluno é recebido de perto — da primeira aula ao
+              próximo desafio.
+            </p>
+            <a className="button button-dark" href="#agendar">
+              Vem conhecer o CT <span aria-hidden="true">→</span>
+            </a>
+          </div>
         </div>
       </section>
 
