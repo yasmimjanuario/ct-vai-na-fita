@@ -1,11 +1,13 @@
 "use client";
 
+import "./bracket-chain.css";
+
 import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type CategoryId = "misto-escolinha" | "iniciante-masculino";
 type Team = { id: string; player1: string; player2: string; seed: number; losses: number; eliminated: boolean };
-type Match = { id: string; round: number; bracket: "principal" | "repescagem"; teamA: string; teamB: string; winner?: string };
+type Match = { id: string; round: number; bracket: "principal" | "repescagem"; teamA: string; teamB: string; winner?: string; winnerOf?: string };
 type Tournament = { teams: Team[]; matches: Match[]; round: number; started: boolean; champion?: string; runnerUp?: string };
 
 const categories: { id: CategoryId; name: string; description: string }[] = [
@@ -14,7 +16,7 @@ const categories: { id: CategoryId; name: string; description: string }[] = [
 ];
 
 const emptyTournament = (): Tournament => ({ teams: [], matches: [], round: 0, started: false });
-const storageKey = "ct-vai-na-fita-torneio-v2";
+const storageKey = "ct-vai-na-fita-torneio-v3";
 
 const mistoEscolinhaTeams: Team[] = [
   { id: "nathalia-max", player1: "Nathalia", player2: "Max", seed: 1, losses: 0, eliminated: false },
@@ -22,9 +24,9 @@ const mistoEscolinhaTeams: Team[] = [
   { id: "mariana-lucas", player1: "Mariana", player2: "Lucas", seed: 3, losses: 0, eliminated: false },
   { id: "nathalia-chokito", player1: "Nathalia", player2: "Chokito", seed: 4, losses: 1, eliminated: false },
   { id: "malu-belas", player1: "Malu", player2: "Belas", seed: 5, losses: 1, eliminated: false },
-  { id: "thais-daniel", player1: "Thais", player2: "Daniel", seed: 6, losses: 0, eliminated: false },
+  { id: "gisele-mello", player1: "Gisele", player2: "Mello", seed: 6, losses: 0, eliminated: false },
   { id: "maria-clara-pk", player1: "Maria Clara", player2: "PK", seed: 7, losses: 0, eliminated: false },
-  { id: "gisele-mello", player1: "Gisele", player2: "Mello", seed: 8, losses: 0, eliminated: false },
+  { id: "thais-daniel", player1: "Thais", player2: "Daniel", seed: 8, losses: 0, eliminated: false },
   { id: "pietra-tinoco", player1: "Pietra", player2: "Tinoco", seed: 9, losses: 1, eliminated: false },
   { id: "veronica-miguel", player1: "Verônica", player2: "Miguel", seed: 10, losses: 1, eliminated: false },
   { id: "tays-renan", player1: "Tays", player2: "Renan", seed: 11, losses: 1, eliminated: false },
@@ -47,9 +49,26 @@ const mistoEscolinhaAtualizado = (): Tournament => ({
     { id: "fase2-thamires-maria", round: 2, bracket: "principal", teamA: "thamires-renan", teamB: "maria-clara-pk" },
     { id: "fase2-mariana-thais", round: 2, bracket: "principal", teamA: "mariana-lucas", teamB: "thais-daniel" },
     { id: "repescagem-nathalia-malu", round: 2, bracket: "repescagem", teamA: "nathalia-chokito", teamB: "malu-belas" },
+    { id: "repescagem-pietra-vencedor", round: 2, bracket: "repescagem", teamA: "pietra-tinoco", teamB: "", winnerOf: "repescagem-nathalia-malu" },
     { id: "repescagem-veronica-tays", round: 2, bracket: "repescagem", teamA: "veronica-miguel", teamB: "tays-renan" },
   ],
 });
+
+const mistoPrincipalColumns = [
+  { title: "Fase 1", ids: ["fase1-gisele-pietra", "fase1-nathalia-brenda", "fase1-malu-dalila", "fase1-maria-veronica", "fase1-thais-tays"] },
+  { title: "Fase 2", ids: ["fase2-nathalia-gisele", "fase2-brenda-dalila", "fase2-thamires-maria", "fase2-mariana-thais"] },
+  { title: "Fase 3", ids: [] },
+  { title: "Semifinal", ids: [] },
+  { title: "Final", ids: [] },
+];
+
+const mistoRepescagemColumns = [
+  { title: "Perdedores Fase 1", ids: ["repescagem-nathalia-malu", "repescagem-veronica-tays"] },
+  { title: "Perdedores Fase 2", ids: ["repescagem-pietra-vencedor"] },
+  { title: "Perdedores Fase 3", ids: [] },
+  { title: "Semifinal", ids: [] },
+  { title: "Final", ids: [] },
+];
 
 const initialData = (): Record<CategoryId, Tournament> => ({
   "misto-escolinha": mistoEscolinhaAtualizado(),
@@ -99,7 +118,14 @@ export default function TournamentPage() {
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey);
     if (saved) {
-      try { setData(JSON.parse(saved)); } catch { /* mantém uma chave nova */ }
+      try {
+        const parsed = JSON.parse(saved) as Record<CategoryId, Tournament>;
+        const misto = parsed["misto-escolinha"];
+        if (misto?.started && !misto.matches.some((match) => match.id === "repescagem-pietra-vencedor")) {
+          misto.matches.push({ id: "repescagem-pietra-vencedor", round: 2, bracket: "repescagem", teamA: "pietra-tinoco", teamB: "", winnerOf: "repescagem-nathalia-malu" });
+        }
+        setData(parsed);
+      } catch { /* mantém uma chave nova */ }
     }
     setHydrated(true);
   }, []);
@@ -158,7 +184,9 @@ export default function TournamentPage() {
   function selectWinner(matchId: string, winnerId: string) {
     const match = tournament.matches.find((item) => item.id === matchId);
     if (!match || match.winner) return;
-    const loserId = match.teamA === winnerId ? match.teamB : match.teamA;
+    const resolvedTeamB = match.winnerOf ? tournament.matches.find((item) => item.id === match.winnerOf)?.winner : match.teamB;
+    if (!resolvedTeamB) return;
+    const loserId = match.teamA === winnerId ? resolvedTeamB : match.teamA;
     const teams = tournament.teams.map((team) => {
       if (team.id !== loserId) return team;
       const losses = team.losses + 1;
@@ -184,6 +212,54 @@ export default function TournamentPage() {
   function resetTournament() {
     if (!window.confirm(`Reiniciar a categoria ${categoryInfo.name}? Todos os resultados serão apagados.`)) return;
     updateTournament(emptyTournament());
+  }
+
+  function renderMatch(match: Match, label: string) {
+    const feederWinner = match.winnerOf ? tournament.matches.find((item) => item.id === match.winnerOf)?.winner : undefined;
+    const teamIds = [match.teamA, match.winnerOf ? feederWinner : match.teamB];
+    return <div className="match-card bracket-match" key={match.id}>
+      <span className="match-label">{label}</span>
+      {teamIds.map((teamId, slot) => {
+        if (!teamId) return <div className="waiting-team" key={`waiting-${slot}`}><span className="seed">?</span><strong>Vencedor do jogo anterior</strong><span className="loss-badge">AGUARDANDO</span></div>;
+        const team = tournament.teams.find((item) => item.id === teamId)!;
+        return <button key={teamId} className={match.winner === teamId ? "winner" : match.winner ? "loser" : ""} onClick={() => selectWinner(match.id, teamId)} disabled={Boolean(match.winner)}>
+          <span className="seed">{team.seed}</span><strong>{teamName(team)}</strong><span className="loss-badge">{team.losses}D</span>
+        </button>;
+      })}
+      {!match.winner && <small>{match.winnerOf && !feederWinner ? "Aguardando o jogo anterior" : "Toque na dupla vencedora"}</small>}
+    </div>;
+  }
+
+  function renderMistoBoard() {
+    const principalColumns = mistoPrincipalColumns.map((column, index) => index < 2 ? column : {
+      ...column,
+      ids: tournament.matches.filter((match) => match.bracket === "principal" && match.round === index + 1).map((match) => match.id),
+    });
+    const repescagemColumns = mistoRepescagemColumns.map((column, index) => index < 2 ? column : {
+      ...column,
+      ids: tournament.matches.filter((match) => match.bracket === "repescagem" && match.round === index + 1).map((match) => match.id),
+    });
+    const renderColumns = (columns: typeof mistoPrincipalColumns) => <div className="bracket-track">
+      {columns.map((column, columnIndex) => <div className={`phase-column phase-${columnIndex + 1}`} key={column.title}>
+        <div className="phase-heading">{column.title}</div>
+        <div className="phase-matches">
+          {column.ids.length ? column.ids.map((id, index) => {
+            const match = tournament.matches.find((item) => item.id === id);
+            return match ? renderMatch(match, `JOGO ${index + 1}`) : null;
+          }) : <div className="future-match"><span>Próximo confronto</span><strong>Aguardando vencedores</strong></div>}
+        </div>
+      </div>)}
+    </div>;
+
+    return <div className="bracket-scroll" aria-label="Chaveamento com rolagem horizontal">
+      <div className="scroll-hint">← Arraste para o lado para acompanhar as fases →</div>
+      <div className="bracket-board">
+        <div className="board-label principal-label">CHAVE PRINCIPAL · DUPLAS INVICTAS</div>
+        {renderColumns(principalColumns)}
+        <div className="board-label repechage-label">REPESCAGEM · SEGUNDA VIDA</div>
+        {renderColumns(repescagemColumns)}
+      </div>
+    </div>;
   }
 
   return (
@@ -253,24 +329,29 @@ export default function TournamentPage() {
           ) : (
             <section className="bracket-section">
               <div className="bracket-title"><div><span>RODADA {tournament.round}</span><h2>Partidas atuais</h2></div><div className="legend"><span><i className="life life-green" />0 derrotas</span><span><i className="life life-yellow" />1 derrota</span></div></div>
-              <div className="bracket-columns">
+              {category === "misto-escolinha" ? renderMistoBoard() : <div className="bracket-columns">
                 {(["principal", "repescagem"] as const).map((bracket) => {
                   const matches = currentMatches.filter((match) => match.bracket === bracket);
                   return <div className={`bracket-column ${bracket}`} key={bracket}>
                     <div className="column-heading"><span>{bracket === "principal" ? "CHAVE PRINCIPAL" : "REPESCAGEM"}</span><h3>{bracket === "principal" ? "Duplas invictas" : "Última chance"}</h3></div>
-                    {matches.length ? matches.map((match, index) => <div className="match-card" key={match.id}>
-                      <span className="match-label">JOGO {index + 1}</span>
-                      {[match.teamA, match.teamB].map((teamId) => {
+                    {matches.length ? matches.map((match, index) => {
+                      const feederWinner = match.winnerOf ? tournament.matches.find((item) => item.id === match.winnerOf)?.winner : undefined;
+                      const teamIds = [match.teamA, match.winnerOf ? feederWinner : match.teamB];
+                      return <div className={`match-card ${match.winnerOf ? "dependent-match" : ""}`} key={match.id}>
+                      {match.winnerOf && <span className="bracket-connector">VENCEDOR AVANÇA ↓</span>}
+                      <span className="match-label">{match.winnerOf ? "PRÓXIMO JOGO DA REPESCAGEM" : `JOGO ${index + 1}`}</span>
+                      {teamIds.map((teamId) => {
+                        if (!teamId) return <div className="waiting-team" key="waiting"><span className="seed">?</span><strong>Vencedor de Nathalia + Chokito × Malu + Belas</strong><span className="loss-badge">AGUARDANDO</span></div>;
                         const team = tournament.teams.find((item) => item.id === teamId)!;
                         return <button key={teamId} className={match.winner === teamId ? "winner" : match.winner ? "loser" : ""} onClick={() => selectWinner(match.id, teamId)} disabled={Boolean(match.winner)}>
                           <span className="seed">{team.seed}</span><strong>{teamName(team)}</strong><span className="loss-badge">{team.losses}D</span>
                         </button>;
                       })}
-                      {!match.winner && <small>Toque na dupla vencedora</small>}
-                    </div>) : <div className="bracket-empty">Nenhuma partida nesta chave agora.</div>}
+                      {!match.winner && <small>{match.winnerOf && !feederWinner ? "Aguardando o jogo anterior" : "Toque na dupla vencedora"}</small>}
+                    </div>}) : <div className="bracket-empty">Nenhuma partida nesta chave agora.</div>}
                   </div>;
                 })}
-              </div>
+              </div>}
               {roundComplete && <button className="next-round" onClick={nextRound}>{activeTeams.length === 1 ? "Registrar campeões" : "Avançar para a próxima rodada"} <span>→</span></button>}
             </section>
           )}
