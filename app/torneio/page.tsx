@@ -14,7 +14,47 @@ const categories: { id: CategoryId; name: string; description: string }[] = [
 ];
 
 const emptyTournament = (): Tournament => ({ teams: [], matches: [], round: 0, started: false });
-const storageKey = "ct-vai-na-fita-torneio-v1";
+const storageKey = "ct-vai-na-fita-torneio-v2";
+
+const mistoEscolinhaTeams: Team[] = [
+  { id: "nathalia-max", player1: "Nathalia", player2: "Max", seed: 1, losses: 0, eliminated: false },
+  { id: "thamires-renan", player1: "Thamires", player2: "Renan", seed: 2, losses: 0, eliminated: false },
+  { id: "mariana-lucas", player1: "Mariana", player2: "Lucas", seed: 3, losses: 0, eliminated: false },
+  { id: "nathalia-chokito", player1: "Nathalia", player2: "Chokito", seed: 4, losses: 1, eliminated: false },
+  { id: "malu-belas", player1: "Malu", player2: "Belas", seed: 5, losses: 1, eliminated: false },
+  { id: "thais-daniel", player1: "Thais", player2: "Daniel", seed: 6, losses: 0, eliminated: false },
+  { id: "maria-clara-pk", player1: "Maria Clara", player2: "PK", seed: 7, losses: 0, eliminated: false },
+  { id: "gisele-mello", player1: "Gisele", player2: "Mello", seed: 8, losses: 0, eliminated: false },
+  { id: "pietra-tinoco", player1: "Pietra", player2: "Tinoco", seed: 9, losses: 1, eliminated: false },
+  { id: "veronica-miguel", player1: "Verônica", player2: "Miguel", seed: 10, losses: 1, eliminated: false },
+  { id: "tays-renan", player1: "Tays", player2: "Renan", seed: 11, losses: 1, eliminated: false },
+  { id: "dalila-denis", player1: "Dalila", player2: "Dênis", seed: 12, losses: 0, eliminated: false },
+  { id: "brenda-sunny", player1: "Brenda", player2: "Sunny", seed: 13, losses: 0, eliminated: false },
+];
+
+const mistoEscolinhaAtualizado = (): Tournament => ({
+  teams: mistoEscolinhaTeams,
+  started: true,
+  round: 2,
+  matches: [
+    { id: "fase1-gisele-pietra", round: 1, bracket: "principal", teamA: "gisele-mello", teamB: "pietra-tinoco", winner: "gisele-mello" },
+    { id: "fase1-nathalia-brenda", round: 1, bracket: "principal", teamA: "nathalia-chokito", teamB: "brenda-sunny", winner: "brenda-sunny" },
+    { id: "fase1-malu-dalila", round: 1, bracket: "principal", teamA: "malu-belas", teamB: "dalila-denis", winner: "dalila-denis" },
+    { id: "fase1-maria-veronica", round: 1, bracket: "principal", teamA: "maria-clara-pk", teamB: "veronica-miguel", winner: "maria-clara-pk" },
+    { id: "fase1-thais-tays", round: 1, bracket: "principal", teamA: "thais-daniel", teamB: "tays-renan", winner: "thais-daniel" },
+    { id: "fase2-nathalia-gisele", round: 2, bracket: "principal", teamA: "nathalia-max", teamB: "gisele-mello" },
+    { id: "fase2-brenda-dalila", round: 2, bracket: "principal", teamA: "brenda-sunny", teamB: "dalila-denis" },
+    { id: "fase2-thamires-maria", round: 2, bracket: "principal", teamA: "thamires-renan", teamB: "maria-clara-pk" },
+    { id: "fase2-mariana-thais", round: 2, bracket: "principal", teamA: "mariana-lucas", teamB: "thais-daniel" },
+    { id: "repescagem-nathalia-malu", round: 2, bracket: "repescagem", teamA: "nathalia-chokito", teamB: "malu-belas" },
+    { id: "repescagem-veronica-tays", round: 2, bracket: "repescagem", teamA: "veronica-miguel", teamB: "tays-renan" },
+  ],
+});
+
+const initialData = (): Record<CategoryId, Tournament> => ({
+  "misto-escolinha": mistoEscolinhaAtualizado(),
+  "iniciante-masculino": emptyTournament(),
+});
 
 function teamName(team?: Team) {
   return team ? `${team.player1} & ${team.player2}` : "Dupla não encontrada";
@@ -51,10 +91,7 @@ function createRound(teams: Team[], round: number): Match[] {
 
 export default function TournamentPage() {
   const [category, setCategory] = useState<CategoryId>("misto-escolinha");
-  const [data, setData] = useState<Record<CategoryId, Tournament>>({
-    "misto-escolinha": emptyTournament(),
-    "iniciante-masculino": emptyTournament(),
-  });
+  const [data, setData] = useState<Record<CategoryId, Tournament>>(initialData);
   const [player1, setPlayer1] = useState("");
   const [player2, setPlayer2] = useState("");
   const [hydrated, setHydrated] = useState(false);
