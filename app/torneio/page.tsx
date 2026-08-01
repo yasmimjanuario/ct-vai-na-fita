@@ -3,7 +3,7 @@
 import "./bracket-chain.css";
 
 import Image from "next/image";
-import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type CategoryId = "misto-escolinha" | "iniciante-masculino";
 type Team = { id: string; player1: string; player2: string; seed: number; losses: number; eliminated: boolean };
@@ -16,7 +16,7 @@ const categories: { id: CategoryId; name: string; description: string }[] = [
 ];
 
 const emptyTournament = (): Tournament => ({ teams: [], matches: [], round: 0, started: false });
-const storageKey = "ct-vai-na-fita-torneio-v3";
+const storageKey = "ct-vai-na-fita-torneio-v2";
 
 const mistoEscolinhaTeams: Team[] = [
   { id: "nathalia-max", player1: "Nathalia", player2: "Max", seed: 1, losses: 0, eliminated: false },
@@ -24,9 +24,9 @@ const mistoEscolinhaTeams: Team[] = [
   { id: "mariana-lucas", player1: "Mariana", player2: "Lucas", seed: 3, losses: 0, eliminated: false },
   { id: "nathalia-chokito", player1: "Nathalia", player2: "Chokito", seed: 4, losses: 1, eliminated: false },
   { id: "malu-belas", player1: "Malu", player2: "Belas", seed: 5, losses: 1, eliminated: false },
-  { id: "gisele-mello", player1: "Gisele", player2: "Mello", seed: 6, losses: 0, eliminated: false },
+  { id: "thais-daniel", player1: "Thais", player2: "Daniel", seed: 6, losses: 0, eliminated: false },
   { id: "maria-clara-pk", player1: "Maria Clara", player2: "PK", seed: 7, losses: 0, eliminated: false },
-  { id: "thais-daniel", player1: "Thais", player2: "Daniel", seed: 8, losses: 0, eliminated: false },
+  { id: "gisele-mello", player1: "Gisele", player2: "Mello", seed: 8, losses: 0, eliminated: false },
   { id: "pietra-tinoco", player1: "Pietra", player2: "Tinoco", seed: 9, losses: 1, eliminated: false },
   { id: "veronica-miguel", player1: "Verônica", player2: "Miguel", seed: 10, losses: 1, eliminated: false },
   { id: "tays-renan", player1: "Tays", player2: "Renan", seed: 11, losses: 1, eliminated: false },
@@ -53,22 +53,6 @@ const mistoEscolinhaAtualizado = (): Tournament => ({
     { id: "repescagem-veronica-tays", round: 2, bracket: "repescagem", teamA: "veronica-miguel", teamB: "tays-renan" },
   ],
 });
-
-const mistoPrincipalColumns = [
-  { title: "Fase 1", ids: ["fase1-gisele-pietra", "fase1-nathalia-brenda", "fase1-malu-dalila", "fase1-maria-veronica", "fase1-thais-tays"] },
-  { title: "Fase 2", ids: ["fase2-nathalia-gisele", "fase2-brenda-dalila", "fase2-thamires-maria", "fase2-mariana-thais"] },
-  { title: "Fase 3", ids: [] },
-  { title: "Semifinal", ids: [] },
-  { title: "Final", ids: [] },
-];
-
-const mistoRepescagemColumns = [
-  { title: "Perdedores Fase 1", ids: ["repescagem-nathalia-malu", "repescagem-veronica-tays"] },
-  { title: "Perdedores Fase 2", ids: ["repescagem-pietra-vencedor"] },
-  { title: "Perdedores Fase 3", ids: [] },
-  { title: "Semifinal", ids: [] },
-  { title: "Final", ids: [] },
-];
 
 const initialData = (): Record<CategoryId, Tournament> => ({
   "misto-escolinha": mistoEscolinhaAtualizado(),
@@ -114,11 +98,6 @@ export default function TournamentPage() {
   const [player1, setPlayer1] = useState("");
   const [player2, setPlayer2] = useState("");
   const [hydrated, setHydrated] = useState(false);
-  const [bracketZoom, setBracketZoom] = useState(1);
-
-  useEffect(() => {
-    if (window.matchMedia("(max-width: 760px)").matches) setBracketZoom(0.65);
-  }, []);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey);
@@ -219,71 +198,6 @@ export default function TournamentPage() {
     updateTournament(emptyTournament());
   }
 
-  function changeBracketZoom(direction: -1 | 1) {
-    setBracketZoom((current) => Math.min(1.2, Math.max(0.5, Number((current + direction * 0.1).toFixed(2)))));
-  }
-
-  function renderMatch(match: Match, label: string) {
-    const feederWinner = match.winnerOf ? tournament.matches.find((item) => item.id === match.winnerOf)?.winner : undefined;
-    const teamIds = [match.teamA, match.winnerOf ? feederWinner : match.teamB];
-    return <div className="match-card bracket-match" key={match.id}>
-      <span className="match-label">{label}</span>
-      {teamIds.map((teamId, slot) => {
-        if (!teamId) return <div className="waiting-team" key={`waiting-${slot}`}><span className="seed">?</span><strong>Vencedor do jogo anterior</strong><span className="loss-badge">AGUARDANDO</span></div>;
-        const team = tournament.teams.find((item) => item.id === teamId)!;
-        return <button key={teamId} className={match.winner === teamId ? "winner" : match.winner ? "loser" : ""} onClick={() => selectWinner(match.id, teamId)} disabled={Boolean(match.winner)}>
-          <span className="seed">{team.seed}</span><strong>{teamName(team)}</strong><span className="loss-badge">{team.losses}D</span>
-        </button>;
-      })}
-      {!match.winner && <small>{match.winnerOf && !feederWinner ? "Aguardando o jogo anterior" : "Toque na dupla vencedora"}</small>}
-    </div>;
-  }
-
-  function renderMistoBoard() {
-    const principalColumns = mistoPrincipalColumns.map((column, index) => index < 2 ? column : {
-      ...column,
-      ids: tournament.matches.filter((match) => match.bracket === "principal" && match.round === index + 1).map((match) => match.id),
-    });
-    const repescagemColumns = mistoRepescagemColumns.map((column, index) => index < 2 ? column : {
-      ...column,
-      ids: tournament.matches.filter((match) => match.bracket === "repescagem" && match.round === index + 1).map((match) => match.id),
-    });
-    const renderColumns = (columns: typeof mistoPrincipalColumns) => <div className="bracket-track">
-      {columns.map((column, columnIndex) => <div className={`phase-column phase-${columnIndex + 1}`} key={column.title}>
-        <div className="phase-heading">{column.title}</div>
-        <div className="phase-matches">
-          {column.ids.length ? column.ids.map((id, index) => {
-            const match = tournament.matches.find((item) => item.id === id);
-            return match ? renderMatch(match, `JOGO ${index + 1}`) : null;
-          }) : <div className="future-match"><span>Próximo confronto</span><strong>Aguardando vencedores</strong></div>}
-        </div>
-      </div>)}
-    </div>;
-
-    return <>
-      <div className="bracket-toolbar" aria-label="Controles de tamanho do chaveamento">
-        <span className="bracket-toolbar-label">Tamanho da chave</span>
-        <div className="zoom-controls">
-          <button type="button" onClick={() => changeBracketZoom(-1)} disabled={bracketZoom <= 0.5} aria-label="Diminuir chaveamento">−</button>
-          <output aria-live="polite">{Math.round(bracketZoom * 100)}%</output>
-          <button type="button" onClick={() => changeBracketZoom(1)} disabled={bracketZoom >= 1.2} aria-label="Aumentar chaveamento">+</button>
-          <button type="button" className="fit-bracket" onClick={() => setBracketZoom(window.matchMedia("(max-width: 760px)").matches ? 0.65 : 1)}>Ajustar à tela</button>
-        </div>
-      </div>
-      <div className="bracket-scroll" aria-label="Chaveamento com rolagem horizontal">
-      <div className="scroll-hint">← Arraste para o lado para acompanhar as fases →</div>
-      <div className="bracket-zoom-content" style={{ "--bracket-zoom": bracketZoom } as CSSProperties}>
-      <div className="bracket-board">
-        <div className="board-label principal-label">CHAVE PRINCIPAL · DUPLAS INVICTAS</div>
-        {renderColumns(principalColumns)}
-        <div className="board-label repechage-label">REPESCAGEM · SEGUNDA VIDA</div>
-        {renderColumns(repescagemColumns)}
-      </div>
-      </div>
-      </div>
-    </>;
-  }
-
   return (
     <main className="tournament-page">
       <header className="tournament-header">
@@ -351,7 +265,10 @@ export default function TournamentPage() {
           ) : (
             <section className="bracket-section">
               <div className="bracket-title"><div><span>RODADA {tournament.round}</span><h2>Partidas atuais</h2></div><div className="legend"><span><i className="life life-green" />0 derrotas</span><span><i className="life life-yellow" />1 derrota</span></div></div>
-              {category === "misto-escolinha" ? renderMistoBoard() : <div className="bracket-columns">
+              <p className="gesture-hint">Arraste para os lados e use dois dedos para aproximar ou afastar.</p>
+              <div className="bracket-scroll" tabIndex={0} aria-label="Chaveamento com rolagem horizontal">
+              <div className="bracket-zoom-content">
+              <div className="bracket-columns">
                 {(["principal", "repescagem"] as const).map((bracket) => {
                   const matches = currentMatches.filter((match) => match.bracket === bracket);
                   return <div className={`bracket-column ${bracket}`} key={bracket}>
@@ -373,7 +290,9 @@ export default function TournamentPage() {
                     </div>}) : <div className="bracket-empty">Nenhuma partida nesta chave agora.</div>}
                   </div>;
                 })}
-              </div>}
+              </div>
+              </div>
+              </div>
               {roundComplete && <button className="next-round" onClick={nextRound}>{activeTeams.length === 1 ? "Registrar campeões" : "Avançar para a próxima rodada"} <span>→</span></button>}
             </section>
           )}
