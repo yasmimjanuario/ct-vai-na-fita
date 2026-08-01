@@ -3,7 +3,7 @@
 import "./bracket-chain.css";
 
 import Image from "next/image";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
 
 type CategoryId = "misto-escolinha" | "iniciante-masculino";
 type Team = { id: string; player1: string; player2: string; seed: number; losses: number; eliminated: boolean };
@@ -114,6 +114,11 @@ export default function TournamentPage() {
   const [player1, setPlayer1] = useState("");
   const [player2, setPlayer2] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [bracketZoom, setBracketZoom] = useState(1);
+
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 760px)").matches) setBracketZoom(0.65);
+  }, []);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey);
@@ -214,6 +219,10 @@ export default function TournamentPage() {
     updateTournament(emptyTournament());
   }
 
+  function changeBracketZoom(direction: -1 | 1) {
+    setBracketZoom((current) => Math.min(1.2, Math.max(0.5, Number((current + direction * 0.1).toFixed(2)))));
+  }
+
   function renderMatch(match: Match, label: string) {
     const feederWinner = match.winnerOf ? tournament.matches.find((item) => item.id === match.winnerOf)?.winner : undefined;
     const teamIds = [match.teamA, match.winnerOf ? feederWinner : match.teamB];
@@ -251,15 +260,28 @@ export default function TournamentPage() {
       </div>)}
     </div>;
 
-    return <div className="bracket-scroll" aria-label="Chaveamento com rolagem horizontal">
+    return <>
+      <div className="bracket-toolbar" aria-label="Controles de tamanho do chaveamento">
+        <span className="bracket-toolbar-label">Tamanho da chave</span>
+        <div className="zoom-controls">
+          <button type="button" onClick={() => changeBracketZoom(-1)} disabled={bracketZoom <= 0.5} aria-label="Diminuir chaveamento">−</button>
+          <output aria-live="polite">{Math.round(bracketZoom * 100)}%</output>
+          <button type="button" onClick={() => changeBracketZoom(1)} disabled={bracketZoom >= 1.2} aria-label="Aumentar chaveamento">+</button>
+          <button type="button" className="fit-bracket" onClick={() => setBracketZoom(window.matchMedia("(max-width: 760px)").matches ? 0.65 : 1)}>Ajustar à tela</button>
+        </div>
+      </div>
+      <div className="bracket-scroll" aria-label="Chaveamento com rolagem horizontal">
       <div className="scroll-hint">← Arraste para o lado para acompanhar as fases →</div>
+      <div className="bracket-zoom-content" style={{ "--bracket-zoom": bracketZoom } as CSSProperties}>
       <div className="bracket-board">
         <div className="board-label principal-label">CHAVE PRINCIPAL · DUPLAS INVICTAS</div>
         {renderColumns(principalColumns)}
         <div className="board-label repechage-label">REPESCAGEM · SEGUNDA VIDA</div>
         {renderColumns(repescagemColumns)}
       </div>
-    </div>;
+      </div>
+      </div>
+    </>;
   }
 
   return (
