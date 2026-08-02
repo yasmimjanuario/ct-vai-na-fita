@@ -124,12 +124,16 @@ function mergeTournamentCategoriesFromSheet(spreadsheet, saved) {
     });
   });
 
+  // A planilha é a fonte oficial das categorias. Montamos um novo objeto em
+  // vez de reaproveitar `saved`, pois isso impedia renomear/remover categorias:
+  // a categoria antiga continuava no JSON e voltava para Torneio_Duplas no
+  // próximo salvamento feito pelo site.
+  var merged = {};
   Object.keys(sheetTeams).forEach(function(category) {
     sheetTeams[category].sort(function(a, b) { return a.seed - b.seed; });
     var existingKey = Object.keys(saved).find(function(key) { return slugify(key) === slugify(category); });
     var previous = existingKey ? saved[existingKey] : null;
-    if (existingKey && existingKey !== category) delete saved[existingKey];
-    saved[category] = {
+    merged[category] = {
       teams: sheetTeams[category],
       matches: previous && previous.matches ? previous.matches : [],
       round: previous && previous.round ? previous.round : 0,
@@ -183,14 +187,14 @@ function mergeTournamentCategoriesFromSheet(spreadsheet, saved) {
       });
     });
     Object.keys(sheetMatches).forEach(function(matchCategory) {
-      var dataKey = Object.keys(saved).find(function(key) { return slugify(key) === slugify(matchCategory); });
+      var dataKey = Object.keys(merged).find(function(key) { return slugify(key) === slugify(matchCategory); });
       if (!dataKey) return;
-      saved[dataKey].matches = sheetMatches[matchCategory].sort(function(a, b) { return a.number - b.number; });
-      saved[dataKey].started = saved[dataKey].matches.length > 0;
-      saved[dataKey].round = saved[dataKey].matches.reduce(function(max, match) { return Math.max(max, match.round); }, 0);
+      merged[dataKey].matches = sheetMatches[matchCategory].sort(function(a, b) { return a.number - b.number; });
+      merged[dataKey].started = merged[dataKey].matches.length > 0;
+      merged[dataKey].round = merged[dataKey].matches.reduce(function(max, match) { return Math.max(max, match.round); }, 0);
     });
   }
-  return saved;
+  return merged;
 }
 
 function getOrCreateTournamentStateSheet(spreadsheet) {
