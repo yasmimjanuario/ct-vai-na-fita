@@ -131,14 +131,70 @@ function createFirstPhase(teams: Team[]): Match[] {
   return matches;
 }
 
-function ensureFirstPhase(tournament: Tournament): Tournament {
-  if (tournament.teams.length < 2) return tournament;
-  const firstPhase = tournament.matches.filter((match) => match.round === 1);
-  const hasResult = firstPhase.some((match) => match.winner && !match.bye && match.sourceA.ref !== match.sourceB.ref);
-  const represented = new Set(firstPhase.flatMap((match) => [match.sourceA.ref, match.sourceB.ref]));
-  const isComplete = tournament.teams.every((team) => represented.has(team.id));
-  if (tournament.matches.length && (hasResult || isComplete)) return tournament;
-  return { ...tournament, started: true, round: 1, matches: createFirstPhase(tournament.teams) };
+function pairSources(
+  sources: MatchSource[],
+  round: number,
+  bracket: Match["bracket"],
+  firstNumber: number,
+): Match[] {
+  const matches: Match[] = [];
+  for (let index = 0; index < sources.length; index += 2) {
+    const sourceA = sources[index];
+    const sourceB = sources[index + 1] || sourceA;
+    matches.push({
+      id: `jogo-${firstNumber + matches.length}-fase-${round}-${bracket}`,
+      number: firstNumber + matches.length,
+      round,
+      bracket,
+      sourceA,
+      sourceB,
+      bye: !sources[index + 1],
+    });
+  }
+  return matches;
+}
+
+/**
+ * Deixa a fase seguinte desenhada antes dos resultados. Assim a chave mostra
+ * desde cedo para onde vão vencedores e perdedores, e os nomes entram nas
+ * vagas progressivamente conforme cada jogo é concluído.
+ */
+function createNextPhaseSkeleton(matches: Match[], fromRound: number): Match[] {
+  const current = matches.filter((match) => match.round === fromRound).sort((a, b) => a.number - b.number);
+  if (!current.length) return [];
+
+  const principal = current.filter((match) => match.bracket === "principal" && !match.bye);
+  const repescagem = current.filter((match) => match.bracket === "repescagem" && !match.bye);
+  const principalSources: MatchSource[] = principal.map((match) => ({ type: "winner", ref: String(match.number) }));
+  const repescagemSources: MatchSource[] = [
+    ...principal.map((match) => ({ type: "loser" as const, ref: String(match.number) })),
+    ...repescagem.map((match) => ({ type: "winner" as const, ref: String(match.number) })),
+  ];
+  const nextRound = fromRound + 1;
+  const firstNumber = Math.max(...matches.map((match) => match.number), 0) + 1;
+  const upper = pairSources(principalSources, nextRound, "principal", firstNumber);
+  const lower = pairSources(repescagemSources, nextRound, "repescagem", firstNumber + upper.length);
+  return [...upper, ...lower];
+}
+
+function ensureNextPhase(tournament: Tournament): Tournament {
+  if (!tournament.started || tournament.champion || !tournament.matches.length) return tournament;
+  const visibleRound = Math.max(tournament.round || 1, 1);
+  const skeleton = createNextPhaseSkeleton(tournament.matches, visibleRound);
+  const sourceKey = (match: Match) => [
+    match.round,
+    match.bracket,
+    match.sourceA.type,
+    match.sourceA.ref,
+    match.sourceB.type,
+    match.sourceB.ref,
+  ].join(":");
+  const existing = new Set(tournament.matches.map(sourceKey));
+  let nextNumber = Math.max(...tournament.matches.map((match) => match.number), 0) + 1;
+  const missing = skeleton
+    .filter((match) => !existing.has(sourceKey(match)))
+    .map((match) => ({ ...match, id: `jogo-${nextNumber}-fase-${match.round}-${match.bracket}`, number: nextNumber++ }));
+  return missing.length ? { ...tournament, matches: [...tournament.matches, ...missing] } : tournament;
 }
 
 export default function TournamentPage() {
@@ -163,7 +219,10 @@ export default function TournamentPage() {
         const result = await response.json();
         if (active && result.data && Object.keys(result.data).length) {
           const prepared = Object.fromEntries(
-            Object.entries(result.data as Record<CategoryId, Tournament>).map(([id, item]) => [id, ensureFirstPhase(item)]),
+            Object.entries(result.data as Record<CategoryId, Tournament>).map(([id, item]) => [
+              id,
+              item.started ? ensureNextPhase(item) : { ...item, matches: [], round: 0 },
+            ]),
           );
           setData(prepared);
           setCategory((current) => prepared[current] ? current : Object.keys(prepared)[0]);
@@ -257,7 +316,8 @@ export default function TournamentPage() {
   function startTournament() {
     if (tournament.teams.length < 2) return;
     const round = 1;
-    updateTournament({ ...tournament, started: true, round, matches: createFirstPhase(tournament.teams) });
+    const first = { ...tournament, started: true, round, matches: createFirstPhase(tournament.teams) };
+    updateTournament(ensureNextPhase(first));
   }
 
   function selectWinner(matchId: string, winnerId: string) {
@@ -287,7 +347,8 @@ export default function TournamentPage() {
       if (!matches.some((item) => item.round === followingRound)) {
         matches = [...matches, ...createRound(teams, followingRound, nextRoundNumber)];
       }
-      updateTournament({ ...tournament, teams, matches, round: followingRound });
+      const advanced = ensureNextPhase({ ...tournament, teams, matches, round: followingRound });
+      updateTournament(advanced);
       return;
     }
     updateTournament({ ...tournament, teams, matches });
@@ -351,7 +412,7 @@ export default function TournamentPage() {
                 </div>
               </li>)}
             </ol> : <div className="empty-state"><span>🏐</span><p>As duplas adicionadas aparecerão aqui.</p></div>}
-            <button className="start-action" onClick={startTournament} disabled={tournament.teams.length < 2}>Montar chave com {tournament.teams.length} duplas <span>→</span></button>
+            <button className="start-action" onClick={startTournament} disabled={tournament.teams.length < 2}>Iniciar torneio com {tournament.teams.length} duplas <span>→</span></button>
           </div>
         </section>
       ) : (
