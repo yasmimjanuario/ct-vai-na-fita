@@ -6,16 +6,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-type CategoryId = "misto-escolinha" | "iniciante-masculino";
+type CategoryId = string;
 type Team = { id: string; player1: string; player2: string; seed: number; losses: number; eliminated: boolean };
 type MatchSource = { type: "team" | "winner" | "loser"; ref: string };
 type Match = { id: string; number: number; round: number; bracket: "principal" | "repescagem"; sourceA: MatchSource; sourceB: MatchSource; winner?: string };
 type Tournament = { teams: Team[]; matches: Match[]; round: number; started: boolean; champion?: string; runnerUp?: string };
-
-const categories: { id: CategoryId; name: string; description: string }[] = [
-  { id: "misto-escolinha", name: "Misto Escolinha", description: "Categoria mista para alunos da escolinha" },
-  { id: "iniciante-masculino", name: "Iniciante Masculino", description: "Categoria masculina nível iniciante" },
-];
 
 const emptyTournament = (): Tournament => ({ teams: [], matches: [], round: 0, started: false });
 const storageKey = "ct-vai-na-fita-torneio-v3";
@@ -61,6 +56,10 @@ const initialData = (): Record<CategoryId, Tournament> => ({
   "iniciante-masculino": emptyTournament(),
 });
 
+function categoryName(id: string) {
+  return id.replace(/[-_]+/g, " ").replace(/\b\p{L}/gu, (letter) => letter.toLocaleUpperCase("pt-BR"));
+}
+
 function teamName(team?: Team) {
   return team ? `${team.player1} & ${team.player2}` : "Dupla não encontrada";
 }
@@ -102,6 +101,11 @@ export default function TournamentPage() {
   const [hydrated, setHydrated] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"loading" | "synced" | "offline" | "saving">("loading");
 
+  const categories = useMemo(
+    () => Object.keys(data).map((id) => ({ id, name: categoryName(id), description: "Categoria cadastrada na planilha" })),
+    [data],
+  );
+
   useEffect(() => {
     let active = true;
     async function loadShared() {
@@ -109,7 +113,10 @@ export default function TournamentPage() {
         const response = await fetch("/api/tournament", { cache: "no-store" });
         if (!response.ok) throw new Error("indisponível");
         const result = await response.json();
-        if (active && result.data) setData(result.data);
+        if (active && result.data && Object.keys(result.data).length) {
+          setData(result.data);
+          setCategory((current) => result.data[current] ? current : Object.keys(result.data)[0]);
+        }
         if (active) setSyncStatus("synced");
       } catch {
         const saved = window.localStorage.getItem(storageKey);
@@ -135,8 +142,8 @@ export default function TournamentPage() {
     } catch { setSyncStatus("offline"); }
   }
 
-  const tournament = data[category];
-  const categoryInfo = categories.find((item) => item.id === category)!;
+  const tournament = data[category] || emptyTournament();
+  const categoryInfo = categories.find((item) => item.id === category) || { id: category, name: categoryName(category), description: "Categoria cadastrada na planilha" };
   const activeTeams = tournament.teams.filter((team) => !team.eliminated);
   const currentMatches = tournament.matches.filter((match) => match.round === tournament.round);
   const roundComplete = currentMatches.length > 0 && currentMatches.every((match) => match.winner);
@@ -309,17 +316,18 @@ export default function TournamentPage() {
               <p className="gesture-hint">Arraste para os lados e use dois dedos para aproximar ou afastar.</p>
               <div className="bracket-scroll" tabIndex={0} aria-label="Chaveamento com rolagem horizontal">
               <div className="bracket-zoom-content">
-              <div className="bracket-columns">
-                {(["principal", "repescagem"] as const).map((bracket) => {
-                  const matches = tournament.matches.filter((match) => match.bracket === bracket).sort((a, b) => a.round - b.round || a.number - b.number);
-                  return <div className={`bracket-column ${bracket}`} key={bracket}>
-                    <div className="column-heading"><span>{bracket === "principal" ? "CHAVE PRINCIPAL" : "REPESCAGEM"}</span><h3>{bracket === "principal" ? "Duplas invictas" : "Última chance"}</h3></div>
+              <div className="bracket-columns bracket-path">
+                {Array.from(new Set(tournament.matches.map((match) => match.round))).sort((a, b) => a - b).map((round, roundIndex, rounds) => {
+                  const matches = tournament.matches.filter((match) => match.round === round).sort((a, b) => a.number - b.number);
+                  const phaseName = roundIndex === rounds.length - 1 ? "Final" : roundIndex === rounds.length - 2 ? "Semifinal" : `Fase ${round}`;
+                  return <div className="bracket-column phase-column" key={round}>
+                    <div className="column-heading"><span>FASE {round}</span><h3>{phaseName}</h3></div>
                     {matches.length ? matches.map((match) => {
                       const teamIds = [resolveSource(match.sourceA), resolveSource(match.sourceB)];
                       const sources = [match.sourceA, match.sourceB];
                       const dependent = sources.some((source) => source.type !== "team");
-                      return <div className={`match-card ${dependent ? "dependent-match" : ""}`} key={match.id}>
-                      <span className="match-label">JOGO {match.number} • FASE {match.round}</span>
+                      return <div className={`match-card ${match.bracket} ${dependent ? "dependent-match" : ""}`} key={match.id}>
+                      <span className="match-label">JOGO {match.number} • {match.bracket === "repescagem" ? "REPESCAGEM" : "CHAVE PRINCIPAL"}</span>
                       <p className="match-route">Jogo {match.number} — {sourceLabel(match.sourceA)} × {sourceLabel(match.sourceB)}</p>
                       {teamIds.map((teamId, sourceIndex) => {
                         if (!teamId) return <div className="waiting-team" key={`waiting-${sourceIndex}`}><span className="seed">?</span><strong>{sourceLabel(sources[sourceIndex])}</strong><span className="loss-badge">AGUARDANDO</span></div>;
