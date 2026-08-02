@@ -9,7 +9,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 type CategoryId = string;
 type Team = { id: string; player1: string; player2: string; seed: number; losses: number; eliminated: boolean };
 type MatchSource = { type: "team" | "winner" | "loser"; ref: string };
-type Match = { id: string; number: number; round: number; bracket: "principal" | "repescagem"; sourceA: MatchSource; sourceB: MatchSource; winner?: string };
+type Match = { id: string; number: number; round: number; bracket: "principal" | "repescagem"; sourceA: MatchSource; sourceB: MatchSource; winner?: string; bye?: boolean };
 type Tournament = { teams: Team[]; matches: Match[]; round: number; started: boolean; champion?: string; runnerUp?: string };
 
 const emptyTournament = (): Tournament => ({ teams: [], matches: [], round: 0, started: false });
@@ -64,33 +64,81 @@ function teamName(team?: Team) {
   return team ? `${team.player1} & ${team.player2}` : "Dupla não encontrada";
 }
 
-function createRound(teams: Team[], round: number): Match[] {
+function createRound(teams: Team[], round: number, firstNumber = 1): Match[] {
   const active = teams.filter((team) => !team.eliminated);
   const matches: Match[] = [];
+
+  if (active.length === 2) {
+    return [{
+      id: `${round}-final-${active[0].id}-${active[1].id}`, number: firstNumber,
+      round, bracket: "principal",
+      sourceA: { type: "team", ref: active[0].id }, sourceB: { type: "team", ref: active[1].id },
+    }];
+  }
 
   ([0, 1] as const).forEach((losses) => {
     const pool = active.filter((team) => team.losses === losses).sort((a, b) => a.seed - b.seed);
     for (let index = 0; index + 1 < pool.length; index += 2) {
       matches.push({
-        id: `${round}-${losses}-${pool[index].id}-${pool[index + 1].id}`, number: matches.length + 1,
+        id: `${round}-${losses}-${pool[index].id}-${pool[index + 1].id}`, number: firstNumber + matches.length,
         round,
         bracket: losses === 0 ? "principal" : "repescagem",
         sourceA: { type: "team", ref: pool[index].id },
         sourceB: { type: "team", ref: pool[index + 1].id },
       });
     }
+    if (pool.length % 2 === 1) {
+      const team = pool[pool.length - 1];
+      matches.push({
+        id: `${round}-${losses}-bye-${team.id}`,
+        number: firstNumber + matches.length,
+        round,
+        bracket: losses === 0 ? "principal" : "repescagem",
+        sourceA: { type: "team", ref: team.id },
+        sourceB: { type: "team", ref: team.id },
+        winner: team.id,
+        bye: true,
+      });
+    }
   });
 
-  if (!matches.length && active.length === 2) {
+  return matches;
+}
+
+function createFirstPhase(teams: Team[]): Match[] {
+  const ordered = [...teams].sort((a, b) => a.seed - b.seed);
+  const matches: Match[] = [];
+  for (let index = 0; index + 1 < ordered.length; index += 2) {
+    const number = matches.length + 1;
     matches.push({
-      id: `${round}-final-${active[0].id}-${active[1].id}`, number: 1,
-      round,
+      id: `jogo-${number}`,
+      number,
+      round: 1,
       bracket: "principal",
-      sourceA: { type: "team", ref: active[0].id },
-      sourceB: { type: "team", ref: active[1].id },
+      sourceA: { type: "team", ref: ordered[index].id },
+      sourceB: { type: "team", ref: ordered[index + 1].id },
+    });
+  }
+  if (ordered.length % 2 === 1) {
+    const team = ordered[ordered.length - 1];
+    const number = matches.length + 1;
+    matches.push({
+      id: `jogo-${number}-folga`, number, round: 1, bracket: "principal",
+      sourceA: { type: "team", ref: team.id }, sourceB: { type: "team", ref: team.id },
+      winner: team.id, bye: true,
     });
   }
   return matches;
+}
+
+function ensureFirstPhase(tournament: Tournament): Tournament {
+  if (tournament.teams.length < 2) return tournament;
+  const firstPhase = tournament.matches.filter((match) => match.round === 1);
+  const hasResult = firstPhase.some((match) => match.winner && !match.bye && match.sourceA.ref !== match.sourceB.ref);
+  const represented = new Set(firstPhase.flatMap((match) => [match.sourceA.ref, match.sourceB.ref]));
+  const isComplete = tournament.teams.every((team) => represented.has(team.id));
+  if (tournament.matches.length && (hasResult || isComplete)) return tournament;
+  return { ...tournament, started: true, round: 1, matches: createFirstPhase(tournament.teams) };
 }
 
 export default function TournamentPage() {
@@ -114,8 +162,11 @@ export default function TournamentPage() {
         if (!response.ok) throw new Error("indisponível");
         const result = await response.json();
         if (active && result.data && Object.keys(result.data).length) {
-          setData(result.data);
-          setCategory((current) => result.data[current] ? current : Object.keys(result.data)[0]);
+          const prepared = Object.fromEntries(
+            Object.entries(result.data as Record<CategoryId, Tournament>).map(([id, item]) => [id, ensureFirstPhase(item)]),
+          );
+          setData(prepared);
+          setCategory((current) => prepared[current] ? current : Object.keys(prepared)[0]);
         }
         if (active) setSyncStatus("synced");
       } catch {
@@ -206,7 +257,7 @@ export default function TournamentPage() {
   function startTournament() {
     if (tournament.teams.length < 2) return;
     const round = 1;
-    updateTournament({ ...tournament, started: true, round, matches: createRound(tournament.teams, round) });
+    updateTournament({ ...tournament, started: true, round, matches: createFirstPhase(tournament.teams) });
   }
 
   function selectWinner(matchId: string, winnerId: string) {
@@ -221,23 +272,25 @@ export default function TournamentPage() {
       const losses = team.losses + 1;
       return { ...team, losses, eliminated: losses >= 2 };
     });
-    const matches = tournament.matches.map((item) => item.id === matchId ? { ...item, winner: winnerId } : item);
-    updateTournament({ ...tournament, teams, matches });
-  }
+    let matches = tournament.matches.map((item) => item.id === matchId ? { ...item, winner: winnerId } : item);
+    const currentPhase = matches.filter((item) => item.round === match.round);
+    const phaseFinished = currentPhase.length > 0 && currentPhase.every((item) => item.winner);
 
-  function nextRound() {
-    if (!roundComplete) return;
-    const alive = tournament.teams.filter((team) => !team.eliminated);
-    if (alive.length === 1) {
-      const lastMatch = [...tournament.matches].reverse().find((match) => match.winner);
-      const lastA = lastMatch ? resolveSource(lastMatch.sourceA) : undefined;
-      const lastB = lastMatch ? resolveSource(lastMatch.sourceB) : undefined;
-      const runnerUpId = lastMatch ? (lastA === alive[0].id ? lastB : lastA) : undefined;
-      updateTournament({ ...tournament, champion: alive[0].id, runnerUp: runnerUpId });
+    if (phaseFinished) {
+      const alive = teams.filter((team) => !team.eliminated);
+      if (alive.length === 1) {
+        updateTournament({ ...tournament, teams, matches, champion: alive[0].id, runnerUp: loserId });
+        return;
+      }
+      const nextRoundNumber = Math.max(...matches.map((item) => item.number), 0) + 1;
+      const followingRound = match.round + 1;
+      if (!matches.some((item) => item.round === followingRound)) {
+        matches = [...matches, ...createRound(teams, followingRound, nextRoundNumber)];
+      }
+      updateTournament({ ...tournament, teams, matches, round: followingRound });
       return;
     }
-    const round = tournament.round + 1;
-    updateTournament({ ...tournament, round, matches: [...tournament.matches, ...createRound(tournament.teams, round)] });
+    updateTournament({ ...tournament, teams, matches });
   }
 
   function resetTournament() {
@@ -325,7 +378,15 @@ export default function TournamentPage() {
                     {matches.length ? matches.map((match) => {
                       const teamIds = [resolveSource(match.sourceA), resolveSource(match.sourceB)];
                       const sources = [match.sourceA, match.sourceB];
+                      const isBye = Boolean(match.bye) || (match.sourceA.type === "team" && match.sourceB.type === "team" && match.sourceA.ref === match.sourceB.ref);
                       const dependent = sources.some((source) => source.type !== "team");
+                      if (isBye) {
+                        const team = tournament.teams.find((item) => item.id === teamIds[0]);
+                        return <div className="match-card bye-match" key={match.id}>
+                          <span className="match-label">FOLGA • {match.bracket === "repescagem" ? "REPESCAGEM" : "CHAVE PRINCIPAL"}</span>
+                          <div className="waiting-team"><span className="seed">{team?.seed}</span><strong>{teamName(team)}</strong><span className="loss-badge">AVANÇA</span></div>
+                        </div>;
+                      }
                       return <div className={`match-card ${match.bracket} ${dependent ? "dependent-match" : ""}`} key={match.id}>
                       <span className="match-label">JOGO {match.number} • {match.bracket === "repescagem" ? "REPESCAGEM" : "CHAVE PRINCIPAL"}</span>
                       <p className="match-route">Jogo {match.number} — {sourceLabel(match.sourceA)} × {sourceLabel(match.sourceB)}</p>
@@ -343,7 +404,7 @@ export default function TournamentPage() {
               </div>
               </div>
               </div>
-              {roundComplete && <button className="next-round" onClick={nextRound}>{activeTeams.length === 1 ? "Registrar campeões" : "Avançar para a próxima rodada"} <span>→</span></button>}
+              {roundComplete && <p className="phase-auto-note">Fase concluída — preparando automaticamente os próximos jogos.</p>}
             </section>
           )}
 
