@@ -62,3 +62,15 @@
   font-weight: 800;
   line-height: 1.35;
 }
+
+.bye-match {
+  border: 2px dashed #80a39c;
+  background: #f4fbf9;
+}
+
+.phase-auto-note {
+  margin: 18px 0 0;
+  color: #174b45;
+  font-weight: 800;
+  text-align: center;
+}
