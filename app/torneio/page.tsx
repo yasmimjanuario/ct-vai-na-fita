@@ -3,11 +3,13 @@
 import "./bracket-chain.css";
 
 import Image from "next/image";
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type CategoryId = "misto-escolinha" | "iniciante-masculino";
 type Team = { id: string; player1: string; player2: string; seed: number; losses: number; eliminated: boolean };
-type Match = { id: string; round: number; bracket: "principal" | "repescagem"; teamA: string; teamB: string; winner?: string; winnerOf?: string };
+type MatchSource = { type: "team" | "winner" | "loser"; ref: string };
+type Match = { id: string; number: number; round: number; bracket: "principal" | "repescagem"; sourceA: MatchSource; sourceB: MatchSource; winner?: string };
 type Tournament = { teams: Team[]; matches: Match[]; round: number; started: boolean; champion?: string; runnerUp?: string };
 
 const categories: { id: CategoryId; name: string; description: string }[] = [
@@ -16,7 +18,7 @@ const categories: { id: CategoryId; name: string; description: string }[] = [
 ];
 
 const emptyTournament = (): Tournament => ({ teams: [], matches: [], round: 0, started: false });
-const storageKey = "ct-vai-na-fita-torneio-v2";
+const storageKey = "ct-vai-na-fita-torneio-v3";
 
 const mistoEscolinhaTeams: Team[] = [
   { id: "nathalia-max", player1: "Nathalia", player2: "Max", seed: 1, losses: 0, eliminated: false },
@@ -39,18 +41,18 @@ const mistoEscolinhaAtualizado = (): Tournament => ({
   started: true,
   round: 2,
   matches: [
-    { id: "fase1-gisele-pietra", round: 1, bracket: "principal", teamA: "gisele-mello", teamB: "pietra-tinoco", winner: "gisele-mello" },
-    { id: "fase1-nathalia-brenda", round: 1, bracket: "principal", teamA: "nathalia-chokito", teamB: "brenda-sunny", winner: "brenda-sunny" },
-    { id: "fase1-malu-dalila", round: 1, bracket: "principal", teamA: "malu-belas", teamB: "dalila-denis", winner: "dalila-denis" },
-    { id: "fase1-maria-veronica", round: 1, bracket: "principal", teamA: "maria-clara-pk", teamB: "veronica-miguel", winner: "maria-clara-pk" },
-    { id: "fase1-thais-tays", round: 1, bracket: "principal", teamA: "thais-daniel", teamB: "tays-renan", winner: "thais-daniel" },
-    { id: "fase2-nathalia-gisele", round: 2, bracket: "principal", teamA: "nathalia-max", teamB: "gisele-mello" },
-    { id: "fase2-brenda-dalila", round: 2, bracket: "principal", teamA: "brenda-sunny", teamB: "dalila-denis" },
-    { id: "fase2-thamires-maria", round: 2, bracket: "principal", teamA: "thamires-renan", teamB: "maria-clara-pk" },
-    { id: "fase2-mariana-thais", round: 2, bracket: "principal", teamA: "mariana-lucas", teamB: "thais-daniel" },
-    { id: "repescagem-nathalia-malu", round: 2, bracket: "repescagem", teamA: "nathalia-chokito", teamB: "malu-belas" },
-    { id: "repescagem-pietra-vencedor", round: 2, bracket: "repescagem", teamA: "pietra-tinoco", teamB: "", winnerOf: "repescagem-nathalia-malu" },
-    { id: "repescagem-veronica-tays", round: 2, bracket: "repescagem", teamA: "veronica-miguel", teamB: "tays-renan" },
+    { id: "jogo-1", number: 1, round: 1, bracket: "principal", sourceA: { type: "team", ref: "gisele-mello" }, sourceB: { type: "team", ref: "pietra-tinoco" }, winner: "gisele-mello" },
+    { id: "jogo-2", number: 2, round: 1, bracket: "principal", sourceA: { type: "team", ref: "nathalia-chokito" }, sourceB: { type: "team", ref: "brenda-sunny" }, winner: "brenda-sunny" },
+    { id: "jogo-3", number: 3, round: 1, bracket: "principal", sourceA: { type: "team", ref: "malu-belas" }, sourceB: { type: "team", ref: "dalila-denis" }, winner: "dalila-denis" },
+    { id: "jogo-4", number: 4, round: 1, bracket: "principal", sourceA: { type: "team", ref: "maria-clara-pk" }, sourceB: { type: "team", ref: "veronica-miguel" }, winner: "maria-clara-pk" },
+    { id: "jogo-5", number: 5, round: 1, bracket: "principal", sourceA: { type: "team", ref: "thais-daniel" }, sourceB: { type: "team", ref: "tays-renan" }, winner: "thais-daniel" },
+    { id: "jogo-6", number: 6, round: 2, bracket: "principal", sourceA: { type: "team", ref: "nathalia-max" }, sourceB: { type: "winner", ref: "1" } },
+    { id: "jogo-7", number: 7, round: 2, bracket: "principal", sourceA: { type: "winner", ref: "2" }, sourceB: { type: "winner", ref: "3" } },
+    { id: "jogo-8", number: 8, round: 2, bracket: "principal", sourceA: { type: "team", ref: "thamires-renan" }, sourceB: { type: "winner", ref: "4" } },
+    { id: "jogo-9", number: 9, round: 2, bracket: "principal", sourceA: { type: "team", ref: "mariana-lucas" }, sourceB: { type: "winner", ref: "5" } },
+    { id: "jogo-10", number: 10, round: 2, bracket: "repescagem", sourceA: { type: "loser", ref: "2" }, sourceB: { type: "loser", ref: "3" } },
+    { id: "jogo-11", number: 11, round: 3, bracket: "repescagem", sourceA: { type: "team", ref: "pietra-tinoco" }, sourceB: { type: "winner", ref: "10" } },
+    { id: "jogo-12", number: 12, round: 2, bracket: "repescagem", sourceA: { type: "loser", ref: "4" }, sourceB: { type: "loser", ref: "5" } },
   ],
 });
 
@@ -71,22 +73,22 @@ function createRound(teams: Team[], round: number): Match[] {
     const pool = active.filter((team) => team.losses === losses).sort((a, b) => a.seed - b.seed);
     for (let index = 0; index + 1 < pool.length; index += 2) {
       matches.push({
-        id: `${round}-${losses}-${pool[index].id}-${pool[index + 1].id}`,
+        id: `${round}-${losses}-${pool[index].id}-${pool[index + 1].id}`, number: matches.length + 1,
         round,
         bracket: losses === 0 ? "principal" : "repescagem",
-        teamA: pool[index].id,
-        teamB: pool[index + 1].id,
+        sourceA: { type: "team", ref: pool[index].id },
+        sourceB: { type: "team", ref: pool[index + 1].id },
       });
     }
   });
 
   if (!matches.length && active.length === 2) {
     matches.push({
-      id: `${round}-final-${active[0].id}-${active[1].id}`,
+      id: `${round}-final-${active[0].id}-${active[1].id}`, number: 1,
       round,
       bracket: "principal",
-      teamA: active[0].id,
-      teamB: active[1].id,
+      sourceA: { type: "team", ref: active[0].id },
+      sourceB: { type: "team", ref: active[1].id },
     });
   }
   return matches;
@@ -98,25 +100,40 @@ export default function TournamentPage() {
   const [player1, setPlayer1] = useState("");
   const [player2, setPlayer2] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<"loading" | "synced" | "offline" | "saving">("loading");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(storageKey);
-    if (saved) {
+    let active = true;
+    async function loadShared() {
       try {
-        const parsed = JSON.parse(saved) as Record<CategoryId, Tournament>;
-        const misto = parsed["misto-escolinha"];
-        if (misto?.started && !misto.matches.some((match) => match.id === "repescagem-pietra-vencedor")) {
-          misto.matches.push({ id: "repescagem-pietra-vencedor", round: 2, bracket: "repescagem", teamA: "pietra-tinoco", teamB: "", winnerOf: "repescagem-nathalia-malu" });
-        }
-        setData(parsed);
-      } catch { /* mantém uma chave nova */ }
+        const response = await fetch("/api/tournament", { cache: "no-store" });
+        if (!response.ok) throw new Error("indisponível");
+        const result = await response.json();
+        if (active && result.data) setData(result.data);
+        if (active) setSyncStatus("synced");
+      } catch {
+        const saved = window.localStorage.getItem(storageKey);
+        if (saved && active) try { setData(JSON.parse(saved)); } catch { /* usa a chave inicial */ }
+        if (active) setSyncStatus("offline");
+      } finally { if (active) setHydrated(true); }
     }
-    setHydrated(true);
+    loadShared();
+    const timer = window.setInterval(loadShared, 10000);
+    return () => { active = false; window.clearInterval(timer); };
   }, []);
 
   useEffect(() => {
     if (hydrated) window.localStorage.setItem(storageKey, JSON.stringify(data));
   }, [data, hydrated]);
+
+  async function saveShared(nextData: Record<CategoryId, Tournament>) {
+    setSyncStatus("saving");
+    try {
+      const response = await fetch("/api/tournament", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: nextData }) });
+      if (!response.ok) throw new Error("não salvou");
+      setSyncStatus("synced");
+    } catch { setSyncStatus("offline"); }
+  }
 
   const tournament = data[category];
   const categoryInfo = categories.find((item) => item.id === category)!;
@@ -130,7 +147,27 @@ export default function TournamentPage() {
   );
 
   function updateTournament(next: Tournament) {
-    setData((current) => ({ ...current, [category]: next }));
+    setData((current) => {
+      const nextData = { ...current, [category]: next };
+      window.localStorage.setItem(storageKey, JSON.stringify(nextData));
+      void saveShared(nextData);
+      return nextData;
+    });
+  }
+
+  function resolveSource(source: MatchSource): string | undefined {
+    if (source.type === "team") return source.ref;
+    const origin = tournament.matches.find((item) => item.number === Number(source.ref));
+    if (!origin?.winner) return undefined;
+    if (source.type === "winner") return origin.winner;
+    const originA = resolveSource(origin.sourceA);
+    const originB = resolveSource(origin.sourceB);
+    return originA === origin.winner ? originB : originA;
+  }
+
+  function sourceLabel(source: MatchSource) {
+    if (source.type === "team") return teamName(tournament.teams.find((team) => team.id === source.ref));
+    return `${source.type === "winner" ? "Vencedor" : "Perdedor"} do Jogo ${source.ref}`;
   }
 
   function addTeam(event: FormEvent) {
@@ -168,9 +205,10 @@ export default function TournamentPage() {
   function selectWinner(matchId: string, winnerId: string) {
     const match = tournament.matches.find((item) => item.id === matchId);
     if (!match || match.winner) return;
-    const resolvedTeamB = match.winnerOf ? tournament.matches.find((item) => item.id === match.winnerOf)?.winner : match.teamB;
-    if (!resolvedTeamB) return;
-    const loserId = match.teamA === winnerId ? resolvedTeamB : match.teamA;
+    const resolvedTeamA = resolveSource(match.sourceA);
+    const resolvedTeamB = resolveSource(match.sourceB);
+    if (!resolvedTeamA || !resolvedTeamB) return;
+    const loserId = resolvedTeamA === winnerId ? resolvedTeamB : resolvedTeamA;
     const teams = tournament.teams.map((team) => {
       if (team.id !== loserId) return team;
       const losses = team.losses + 1;
@@ -185,7 +223,9 @@ export default function TournamentPage() {
     const alive = tournament.teams.filter((team) => !team.eliminated);
     if (alive.length === 1) {
       const lastMatch = [...tournament.matches].reverse().find((match) => match.winner);
-      const runnerUpId = lastMatch ? (lastMatch.teamA === alive[0].id ? lastMatch.teamB : lastMatch.teamA) : undefined;
+      const lastA = lastMatch ? resolveSource(lastMatch.sourceA) : undefined;
+      const lastB = lastMatch ? resolveSource(lastMatch.sourceB) : undefined;
+      const runnerUpId = lastMatch ? (lastA === alive[0].id ? lastB : lastA) : undefined;
       updateTournament({ ...tournament, champion: alive[0].id, runnerUp: runnerUpId });
       return;
     }
@@ -201,9 +241,9 @@ export default function TournamentPage() {
   return (
     <main className="tournament-page">
       <header className="tournament-header">
-        <a href="/" aria-label="Voltar para o site do CT">
+        <Link href="/" aria-label="Voltar para o site do CT">
           <Image src="/brand/logo-horizontal-branca.png" alt="CT Vai na Fita" width={190} height={70} priority />
-        </a>
+        </Link>
         <div>
           <span className="tournament-kicker">CAMPEONATO CT VAI NA FITA</span>
           <h1>Chaveamento do torneio</h1>
@@ -224,6 +264,7 @@ export default function TournamentPage() {
         <div><span>Duplas</span><strong>{tournament.teams.length}</strong></div>
         <div><span>Na disputa</span><strong>{activeTeams.length}</strong></div>
         <div><span>Rodada</span><strong>{tournament.round || "—"}</strong></div>
+        <div><span>Dados</span><strong>{syncStatus === "synced" ? "Compartilhados" : syncStatus === "saving" ? "Salvando…" : syncStatus === "loading" ? "Carregando…" : "Modo local"}</strong></div>
       </section>
 
       {!tournament.started ? (
@@ -270,23 +311,24 @@ export default function TournamentPage() {
               <div className="bracket-zoom-content">
               <div className="bracket-columns">
                 {(["principal", "repescagem"] as const).map((bracket) => {
-                  const matches = currentMatches.filter((match) => match.bracket === bracket);
+                  const matches = tournament.matches.filter((match) => match.bracket === bracket).sort((a, b) => a.round - b.round || a.number - b.number);
                   return <div className={`bracket-column ${bracket}`} key={bracket}>
                     <div className="column-heading"><span>{bracket === "principal" ? "CHAVE PRINCIPAL" : "REPESCAGEM"}</span><h3>{bracket === "principal" ? "Duplas invictas" : "Última chance"}</h3></div>
-                    {matches.length ? matches.map((match, index) => {
-                      const feederWinner = match.winnerOf ? tournament.matches.find((item) => item.id === match.winnerOf)?.winner : undefined;
-                      const teamIds = [match.teamA, match.winnerOf ? feederWinner : match.teamB];
-                      return <div className={`match-card ${match.winnerOf ? "dependent-match" : ""}`} key={match.id}>
-                      {match.winnerOf && <span className="bracket-connector">VENCEDOR AVANÇA ↓</span>}
-                      <span className="match-label">{match.winnerOf ? "PRÓXIMO JOGO DA REPESCAGEM" : `JOGO ${index + 1}`}</span>
-                      {teamIds.map((teamId) => {
-                        if (!teamId) return <div className="waiting-team" key="waiting"><span className="seed">?</span><strong>Vencedor de Nathalia + Chokito × Malu + Belas</strong><span className="loss-badge">AGUARDANDO</span></div>;
+                    {matches.length ? matches.map((match) => {
+                      const teamIds = [resolveSource(match.sourceA), resolveSource(match.sourceB)];
+                      const sources = [match.sourceA, match.sourceB];
+                      const dependent = sources.some((source) => source.type !== "team");
+                      return <div className={`match-card ${dependent ? "dependent-match" : ""}`} key={match.id}>
+                      <span className="match-label">JOGO {match.number} • FASE {match.round}</span>
+                      <p className="match-route">Jogo {match.number} — {sourceLabel(match.sourceA)} × {sourceLabel(match.sourceB)}</p>
+                      {teamIds.map((teamId, sourceIndex) => {
+                        if (!teamId) return <div className="waiting-team" key={`waiting-${sourceIndex}`}><span className="seed">?</span><strong>{sourceLabel(sources[sourceIndex])}</strong><span className="loss-badge">AGUARDANDO</span></div>;
                         const team = tournament.teams.find((item) => item.id === teamId)!;
                         return <button key={teamId} className={match.winner === teamId ? "winner" : match.winner ? "loser" : ""} onClick={() => selectWinner(match.id, teamId)} disabled={Boolean(match.winner)}>
                           <span className="seed">{team.seed}</span><strong>{teamName(team)}</strong><span className="loss-badge">{team.losses}D</span>
                         </button>;
                       })}
-                      {!match.winner && <small>{match.winnerOf && !feederWinner ? "Aguardando o jogo anterior" : "Toque na dupla vencedora"}</small>}
+                      {!match.winner && <small>{teamIds.every(Boolean) ? "Toque na dupla vencedora" : "Aguardando o jogo anterior"}</small>}
                     </div>}) : <div className="bracket-empty">Nenhuma partida nesta chave agora.</div>}
                   </div>;
                 })}
@@ -309,7 +351,7 @@ export default function TournamentPage() {
           </section>
         </>
       )}
-      <footer className="tournament-footer"><span>CT VAI NA FITA</span><p>Chaveamento salvo automaticamente neste aparelho.</p></footer>
+      <footer className="tournament-footer"><span>CT VAI NA FITA</span><p>Chaveamento compartilhado e atualizado automaticamente.</p></footer>
     </main>
   );
 }
